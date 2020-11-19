@@ -7,12 +7,14 @@
 //
 
 import UIKit
+import CoreData
 
 class HitListViewController: UIViewController {
 
     @IBOutlet weak var tableView: UITableView!
     
-    private var names: [String] = []
+    //NSManagedObject represents a single object stored in Core Data
+    private var notes: [NSManagedObject] = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,9 +30,9 @@ class HitListViewController: UIViewController {
         //creates save button, textField in which we can type our new note
         let saveAction = UIAlertAction(title: "Save", style: .default) { action in
             guard let textField = alert.textFields?.first,
-                let notToSave = textField.text else { return }
+                let noteToSave = textField.text else { return }
             
-            self.names.append(notToSave)
+            self.save(text: noteToSave)
             self.tableView.reloadData()
         }
         
@@ -47,16 +49,40 @@ class HitListViewController: UIViewController {
         //shows the alert
         present(alert, animated: true)
     }
+    
+    private func save(text: String) {
+        guard let appdelegate = UIApplication.shared.delegate as? AppDelegate else {
+            return
+        }
+        // insert a new managed object into a managed object context
+        let managedContext = appdelegate.persistentContainer.viewContext
+        
+        // creates a new managed object and insert it into the managed object context
+        let entity = NSEntityDescription.entity(forEntityName: "Note", in: managedContext)!
+        
+        
+        let note = NSManagedObject(entity: entity, insertInto: managedContext)
+        
+        note.setValue(text, forKey: "text")
+        // save managedContext.save()
+        do {
+            try managedContext.save()
+            notes.append(note)
+        } catch let error as NSError {
+            print("Could not save. \(error), \(error.userInfo)")
+        }
+    }
 }
 
 extension HitListViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return names.count
+        return notes.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let note = notes[indexPath.row]
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
-        cell.textLabel?.text = names[indexPath.row]
+        cell.textLabel?.text = note.value(forKeyPath: "text") as? String
         cell.textLabel?.numberOfLines = 0
         return cell
     }
